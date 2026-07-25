@@ -7,6 +7,9 @@ const PARTICLE_COUNT = 10000;
 const PARTICLE_SIZE = 0.2;
 const PARTICLE_OPACITY = 1.0;
 
+const GRADIENT_HUE_START = 0.0;
+const GRADIENT_HUE_RADIAL_DIST_MOD = 1.0;
+
 const ROT_SPEED_START_X = 0.1;
 const ROT_SPEED_START_Y = 0.2;
 
@@ -76,7 +79,7 @@ function createPointCloud(): THREE.Points {
         // Initialize colors - scale hue based on distance from center
         const dist = r / maxRadius;
 
-        color.setHSL(1.0 - dist, 0.8, 0.5);
+        color.setHSL(getHue(dist), 0.8, 0.5);
 
         colors[i * 3] = color.r;
         colors[i * 3 + 1] = color.g;
@@ -109,6 +112,11 @@ function createPointCloud(): THREE.Points {
 
 
 // Util Functions
+function getHue(radialDist: number): number {
+    // Return rotation velocity at given time as it converges to the target value
+    return 1.0 + GRADIENT_HUE_START - (radialDist * GRADIENT_HUE_RADIAL_DIST_MOD);
+}
+
 function animate(time: number) {
     const secsElapsed = time / 1000;
 
