@@ -97,6 +97,7 @@ export const noiseGLSL = /* glsl */ `
 export const vertexShader = /* glsl */ `
   uniform float uTime;
   uniform float uPixelRatio;
+  uniform float uSize;
   uniform float uNoiseMagnitude;
   uniform float uNoiseGranularity;
   uniform float uNoiseSpeed;
@@ -125,11 +126,13 @@ export const vertexShader = /* glsl */ `
     gl_Position = projectionMatrix * mvPosition;
  
     // Size attenuation, same behavior as PointsMaterial's sizeAttenuation
-    gl_PointSize = uPixelRatio * (300.0 / -mvPosition.z);
+    gl_PointSize = uSize * uPixelRatio * (300.0 / -mvPosition.z);
   }
 `;
 
 export const fragmentShader = /* glsl */ `
+   uniform float uOpacity;
+
   varying vec3 vColor;
  
   void main() {
@@ -138,7 +141,7 @@ export const fragmentShader = /* glsl */ `
     float dist = length(uv);
     
     if (dist < 0.5) {
-      gl_FragColor = vec4(vColor, 1.0);
+      gl_FragColor = vec4(vColor, uOpacity);
     } else {
       gl_FragColor = vec4(vColor, 0.0);
     }

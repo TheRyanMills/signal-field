@@ -2,8 +2,10 @@ import * as THREE from 'three';
 import { vertexShader, fragmentShader } from './shaders';
 
 // Config
-const CLOUD_RADIUS = 2;
+const CLOUD_RADIUS = 1.0;
 const PARTICLE_COUNT = 10000;
+const PARTICLE_SIZE = 0.2;
+const PARTICLE_OPACITY = 1.0;
 
 const ROT_SPEED_START_X = 0.1;
 const ROT_SPEED_START_Y = 0.2;
@@ -20,7 +22,7 @@ const NOISE_SPEED = 0.1;
 // Scene Set-up
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-camera.position.z = 20;
+camera.position.z = 10;
 
 let pointCloud = new THREE.Points();
 let material = new THREE.ShaderMaterial();
@@ -89,6 +91,8 @@ function createPointCloud(): THREE.Points {
         uniforms: {
             uTime: { value: 0 },
             uPixelRatio: { value: Math.min(window.devicePixelRatio, 2) },
+            uSize: { value: PARTICLE_SIZE },
+            uOpacity: { value: PARTICLE_OPACITY },
             uNoiseMagnitude: { value: NOISE_MAGNITUDE },
             uNoiseGranularity: { value: NOISE_GRANULARITY },
             uNoiseSpeed: { value: NOISE_SPEED },
