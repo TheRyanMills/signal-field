@@ -1,33 +1,89 @@
 import * as THREE from 'three';
 
+// Config
+const CLOUD_RADIUS = 1;
+const PARTICLE_COUNT = 10000;
+
 // Scene Set-up
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-camera.position.z = 5;
+camera.position.z = 10;
+
+let pointCloud = new THREE.Points();
+let renderer = new THREE.WebGLRenderer();
+
+// Handle Resize
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
 
 export function renderParticleSimulation() {
+    pointCloud = createPointCloud();
+
+    scene.clear();
+    scene.add(pointCloud);
+
     // Render
-    const renderer = new THREE.WebGLRenderer();
+    renderer = new THREE.WebGLRenderer();
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setAnimationLoop(animate);
 
     document.body.lastChild?.remove();
     document.body.appendChild(renderer.domElement);
+}
 
-    // Cube
-    const geometry = new THREE.BoxGeometry(1, 1, 1);
-    const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
-    const cube = new THREE.Mesh(geometry, material);
+function createPointCloud(): THREE.Points {
+  const maxRadius = CLOUD_RADIUS * 5;
+  const positions = new Float32Array(PARTICLE_COUNT * 3);
+  const colors = new Float32Array(PARTICLE_COUNT * 3);
+  const color = new THREE.Color();
 
-    scene.clear();
-    scene.add(cube);
+  for (let i = 0; i < PARTICLE_COUNT; i++) {
+    // Initialize positions - distribute points within a sphere
+    const r = maxRadius * Math.cbrt(Math.random());
+    const theta = Math.random() * Math.PI * 2;
+    const phi = Math.acos(2 * Math.random() - 1);
 
-    // Animate render
-    function animate(time: number) {
+    const x = r * Math.sin(phi) * Math.cos(theta);
+    const y = r * Math.sin(phi) * Math.sin(theta);
+    const z = r * Math.cos(phi);
 
-        cube.rotation.x = time / 2000;
-        cube.rotation.y = time / 1000;
+    positions[i * 3] = x;
+    positions[i * 3 + 1] = y;
+    positions[i * 3 + 2] = z;
 
-        renderer.render(scene, camera);
-    }
+    // Initialize colors - scale hue based on distance from center
+    const dist = r / maxRadius;
+
+    color.setHSL(1.0 - dist, 0.8, 0.5);
+
+    colors[i * 3] = color.r;
+    colors[i * 3 + 1] = color.g;
+    colors[i * 3 + 2] = color.b;
+  }
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+  const material = new THREE.PointsMaterial({
+    size: 0.05,
+    vertexColors: true,
+    transparent: true,
+    opacity: 0.9,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    sizeAttenuation: true,
+  });
+
+  return new THREE.Points(geometry, material);
+}
+
+function animate(time: number) {
+    pointCloud.rotation.x = time / 2000;
+    pointCloud.rotation.y = time / 1000;
+
+    renderer.render(scene, camera);
 }
