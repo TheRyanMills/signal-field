@@ -3,6 +3,8 @@ import { renderParticleSimulation } from './util/particleSimulation';
 import { defaultConfig, loadingConfig } from './util/simulationConfig';
 import Title from './components/Title';
 import PromptInput from './components/PromptInput';
+import { type ApiResponse, API_ENDPOINT, API_TOKEN, SYSTEM_PROMPT } from './util/paste-api-info-here';
+import type SimulationConfig from './util/simulationConfig';
 
 interface Status {
   message: string;
@@ -36,13 +38,59 @@ function App() {
       setTitle("Loading...")
       renderParticleSimulation(loadingConfig);
 
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      try {
+        const data = await fetchApiResponse(trimmed);
+        const properties = extractPointCloudProps(data);
 
-      setIsLoading(false);
-      setTitle("Welcome to Signal Field")
-      renderParticleSimulation(defaultConfig);
+        renderParticleSimulation(properties);
+        setTitle(properties.title);
+        return true;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Oops! Something went wrong. Try again.';
+        showStatus(message);
+        return false;
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-      return true;
+  const fetchApiResponse =
+    async (userPrompt: string): Promise<ApiResponse> => {
+      const response = await fetch(API_ENDPOINT, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${API_TOKEN}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messages: [
+            { role: 'system', content: SYSTEM_PROMPT },
+            { role: 'user', content: userPrompt },
+          ],
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Request failed with status ${response.status}`);
+      }
+
+      return response.json();
+    };
+
+  const extractPointCloudProps =
+    (data: ApiResponse): SimulationConfig => {
+      if (data.errors.length !== 0) {
+        showStatus(`Model returned with errors: ${data.errors}`);
+      }
+
+      const content = data.result.choices[0].message.content;
+      console.log('Message: ' + content);
+
+      try {
+        return JSON.parse(content);
+      } catch {
+        throw new Error('Request returned invalid json.');
+      }
     };
 
   return (
