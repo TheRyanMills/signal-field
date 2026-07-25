@@ -1,7 +1,8 @@
 import * as THREE from 'three';
+import { vertexShader, fragmentShader } from './shaders';
 
 // Config
-const CLOUD_RADIUS = 1;
+const CLOUD_RADIUS = 2;
 const PARTICLE_COUNT = 10000;
 
 const ROT_SPEED_START_X = 0.1;
@@ -11,13 +12,18 @@ const ROT_SPEED_ACCL = 0.5;
 const ROT_SPEED_TARGET_X = 0.2;
 const ROT_SPEED_TARGET_Y = 0.3;
 
+const NOISE_MAGNITUDE = 0.5;
+const NOISE_GRANULARITY = 0.5;
+const NOISE_SPEED = 0.1;
+
 
 // Scene Set-up
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-camera.position.z = 10;
+camera.position.z = 20;
 
 let pointCloud = new THREE.Points();
+let material = new THREE.ShaderMaterial();
 let renderer = new THREE.WebGLRenderer();
 
 
@@ -79,14 +85,19 @@ function createPointCloud(): THREE.Points {
     geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
 
-    const material = new THREE.PointsMaterial({
-        size: 0.05,
-        vertexColors: true,
+    material = new THREE.ShaderMaterial({
+        uniforms: {
+            uTime: { value: 0 },
+            uPixelRatio: { value: Math.min(window.devicePixelRatio, 2) },
+            uNoiseMagnitude: { value: NOISE_MAGNITUDE },
+            uNoiseGranularity: { value: NOISE_GRANULARITY },
+            uNoiseSpeed: { value: NOISE_SPEED },
+        },
+        vertexShader,
+        fragmentShader,
         transparent: true,
-        opacity: 0.9,
         depthWrite: false,
         blending: THREE.AdditiveBlending,
-        sizeAttenuation: true,
     });
 
     return new THREE.Points(geometry, material);
@@ -97,10 +108,14 @@ function createPointCloud(): THREE.Points {
 function animate(time: number) {
     const secsElapsed = time / 1000;
 
+    // Update material's time value for animated displacement
+    material.uniforms.uTime.value = secsElapsed;
+
     // Apply rotation speed
     pointCloud.rotation.x = secsElapsed * getVelocity(ROT_SPEED_ACCL, ROT_SPEED_START_X, ROT_SPEED_TARGET_X, secsElapsed);
     pointCloud.rotation.y = secsElapsed * getVelocity(ROT_SPEED_ACCL, ROT_SPEED_START_Y, ROT_SPEED_TARGET_Y, secsElapsed);
 
+    // Render frame
     renderer.render(scene, camera);
 }
 
