@@ -1,7 +1,6 @@
 import { useState } from 'react'
-import { renderParticleSimulation } from './particleSimulation';
-import {defaultConfig} from './simulationConfig';
-import './App.css'
+import { renderParticleSimulation } from './util/particleSimulation';
+import {defaultConfig} from './util/simulationConfig';
 
 function App() {
   renderParticleSimulation(defaultConfig);
