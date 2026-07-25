@@ -1,25 +1,6 @@
 import * as THREE from 'three';
 import { vertexShader, fragmentShader } from './shaders';
-
-// Config
-const CLOUD_RADIUS = 1.0;
-const PARTICLE_COUNT = 10000;
-const PARTICLE_SIZE = 0.2;
-const PARTICLE_OPACITY = 1.0;
-
-const GRADIENT_HUE_START = 0.0;
-const GRADIENT_HUE_RADIAL_DIST_MOD = 1.0;
-
-const ROT_SPEED_START_X = 0.1;
-const ROT_SPEED_START_Y = 0.2;
-
-const ROT_SPEED_ACCL = 0.5;
-const ROT_SPEED_TARGET_X = 0.2;
-const ROT_SPEED_TARGET_Y = 0.3;
-
-const NOISE_MAGNITUDE = 0.5;
-const NOISE_GRANULARITY = 0.5;
-const NOISE_SPEED = 0.1;
+import type SimulationConfig from './simulationConfig';
 
 
 // Scene Set-up
@@ -41,8 +22,8 @@ window.addEventListener('resize', () => {
 
 
 // Driver Logic
-export function renderParticleSimulation() {
-    pointCloud = createPointCloud();
+export function renderParticleSimulation(config: SimulationConfig) {
+    pointCloud = createPointCloud(config);
 
     scene.clear();
     scene.add(pointCloud);
@@ -50,19 +31,19 @@ export function renderParticleSimulation() {
     // Render
     renderer = new THREE.WebGLRenderer();
     renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setAnimationLoop(animate);
+    renderer.setAnimationLoop((time) => animate(time, config));
 
     document.body.lastChild?.remove();
     document.body.appendChild(renderer.domElement);
 }
 
-function createPointCloud(): THREE.Points {
-    const maxRadius = CLOUD_RADIUS * 5;
-    const positions = new Float32Array(PARTICLE_COUNT * 3);
-    const colors = new Float32Array(PARTICLE_COUNT * 3);
+function createPointCloud(config: SimulationConfig): THREE.Points {
+    const maxRadius = config.cloudRadius * 5;
+    const positions = new Float32Array(config.particle.count * 3);
+    const colors = new Float32Array(config.particle.count * 3);
     const color = new THREE.Color();
 
-    for (let i = 0; i < PARTICLE_COUNT; i++) {
+    for (let i = 0; i < config.particle.count; i++) {
         // Initialize positions - distribute points within a sphere
         const r = maxRadius * Math.cbrt(Math.random());
         const theta = Math.random() * Math.PI * 2;
@@ -78,8 +59,8 @@ function createPointCloud(): THREE.Points {
 
         // Initialize colors - scale hue based on distance from center
         const dist = r / maxRadius;
-
-        color.setHSL(getHue(dist), 0.8, 0.5);
+        const hue = getHue(dist, config.gradient.hueStart, config.gradient.radialDistMod);
+        color.setHSL(hue, 0.8, 0.5);
 
         colors[i * 3] = color.r;
         colors[i * 3 + 1] = color.g;
@@ -94,11 +75,11 @@ function createPointCloud(): THREE.Points {
         uniforms: {
             uTime: { value: 0 },
             uPixelRatio: { value: Math.min(window.devicePixelRatio, 2) },
-            uSize: { value: PARTICLE_SIZE },
-            uOpacity: { value: PARTICLE_OPACITY },
-            uNoiseMagnitude: { value: NOISE_MAGNITUDE },
-            uNoiseGranularity: { value: NOISE_GRANULARITY },
-            uNoiseSpeed: { value: NOISE_SPEED },
+            uSize: { value: config.particle.size },
+            uOpacity: { value: config.particle.opacity },
+            uNoiseMagnitude: { value: config.noise.magnitude },
+            uNoiseGranularity: { value: config.noise.granulatiry },
+            uNoiseSpeed: { value: config.noise.speed },
         },
         vertexShader,
         fragmentShader,
@@ -112,20 +93,21 @@ function createPointCloud(): THREE.Points {
 
 
 // Util Functions
-function getHue(radialDist: number): number {
+function getHue(radialDist: number, hueStart: number, radialDistMod: number): number {
     // Return rotation velocity at given time as it converges to the target value
-    return 1.0 + GRADIENT_HUE_START - (radialDist * GRADIENT_HUE_RADIAL_DIST_MOD);
+    return 1.0 + hueStart - (radialDist * radialDistMod);
 }
 
-function animate(time: number) {
+function animate(time: number, config: SimulationConfig) {
     const secsElapsed = time / 1000;
 
     // Update material's time value for animated displacement
     material.uniforms.uTime.value = secsElapsed;
 
     // Apply rotation speed
-    pointCloud.rotation.x = secsElapsed * getVelocity(ROT_SPEED_ACCL, ROT_SPEED_START_X, ROT_SPEED_TARGET_X, secsElapsed);
-    pointCloud.rotation.y = secsElapsed * getVelocity(ROT_SPEED_ACCL, ROT_SPEED_START_Y, ROT_SPEED_TARGET_Y, secsElapsed);
+    const rs = config.rotSpeed
+    pointCloud.rotation.x = secsElapsed * getVelocity(rs.accel, rs.startX, rs.targetX, secsElapsed);
+    pointCloud.rotation.y = secsElapsed * getVelocity(rs.accel, rs.startY, rs.targetY, secsElapsed);
 
     // Render frame
     renderer.render(scene, camera);
